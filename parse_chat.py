@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 import json
+import re
 """
 parse_chat.py - Convert a .chat transcript into JSON
-
-
 """
 
 sample = u"""@Begin
@@ -38,22 +37,37 @@ sample = u"""@Begin
 
 def read_transcript(filename):
   return open(filename, 'U').read().decode('utf-8')
-  
-def get_line(pattern, content):
-  lines = content.splitlines()
-  return [line for line in lines if line.startswith(pattern)]
-   
-def get_languages(content):
-  return get_line('@Languages:', content)
 
-def get_id(content):
-  return get_line('@ID:', content)
+def attributable(label):
+  return label.lower().replace('@', '').replace(' ', '_')
 
-def get_date(content):
-  return get_line('@Date:', content)
+def get_attribute(line):
+  try: 
+    attribute, content = line.split(':', 1)
+    return attributable(attribute).strip(), content.strip()
+  except ValueError:
+    print 'ERROR Unable to parse attribute line: ', 
+    print line
+    exit()
 
-def get_time_duration(content):
-  return get_line('@Time Duration:', content)
+def parse_participants(participant_line):
+  """
+  CHI Adam Target_Child, MOT Mother, FAT Father, URS Ursula_Bellugi Investigator, RIC Richard_Cromer Investigator
+
+  parse this to produce:
+  { 
+    'CHI' : 'Adam Target_Child',
+    'MOT' : 'Mother',
+    'FAT' : 'Father',
+    'URS' : 'Ursula_Bellugi Investigator',
+    'RIC' : 'Richard_Cromer Investigator'
+  } 
+  """
+  participants = {} 
+  abbreviation_and_name = [element.split() for element in line.split(',')]
+  for abbreviation, name in abbreviation_and_name:
+    participants[abbreviation] = name
+  return participants
 
 def squish_continuation_lines(content):
   """
@@ -78,17 +92,47 @@ def squish_continuation_lines(content):
       fixed.append(line.strip())
   return '\n'.join(fixed)
 
-def parse_turns(content):
-  pass
+def chunk_list(sequence, criterion):
+  """
+  Subdivide a sequence into subsequences based on a criterion
+  """
+  a = 0
+  chunk = []
 
+  result = []
+
+  for element in sequence:
+    if criterion(element):
+      a = a + 1
+    if a == 1:
+      chunk.append(element)
+    else:
+      result.append(chunk)
+      chunk = []
+      chunk.append(element)
+      a = 1
+  result.append(chunk)
+  return result
+
+def starts_with_star(line):
+  return line.startswith('*') 
+ 
 def parse_transcript(content):
   transcript = {}
+  transcript['turns']  = []
+  transcript['lines']  = []
+
   content = squish_continuation_lines(content)
-  transcript['languages'] = get_languages(content)
-  transcript['id'] = get_id(content)
-  transcript['date'] = get_date(content)
-  transcript['time_duration'] = get_time_duration(content)
-  #transcript['content'] = parse_turns(content)
+
+  for line in content.splitlines():
+    if line.startswith('@') and ':' in line:
+      attribute, value = get_attribute(line)
+      transcript[attribute] = value
+    else:
+      transcript['lines'].append(line)
+
+  transcript['turns'] = chunk_list(transcript['lines'], starts_with_star)
+  ignore = transcript.pop('lines') 
 
   return transcript
 
