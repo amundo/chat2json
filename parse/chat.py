@@ -121,6 +121,9 @@ def starts_with_star(line):
   return line.startswith('*') 
  
 def parse_transcript(content):
+  """
+  parse the content of the chat content into a JSON structure
+  """
   transcript = {}
   transcript['turns']  = []
   transcript['lines']  = []
