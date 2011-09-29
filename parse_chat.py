@@ -38,13 +38,16 @@ sample = u"""@Begin
 def read_transcript(filename):
   return open(filename, 'U').read().decode('utf-8')
 
-def attributable(label):
-  return label.lower().replace('@', '').replace(' ', '_')
+def remove_spaces_and_sigils(label):
+  sigils = '@%*'
+  for sigil in sigils:
+    label = label.replace(sigil, '')
+  return label.lower().replace(' ', '_')
 
 def get_attribute(line):
   try: 
     attribute, content = line.split(':', 1)
-    return attributable(attribute).strip(), content.strip()
+    return remove_spaces_and_sigils(attribute).strip(), content.strip()
   except ValueError:
     print 'ERROR Unable to parse attribute line: ', 
     print line
