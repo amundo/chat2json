@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 import re
+from sequences import * 
 """
 parse_chat.py - Convert a .chat transcript into JSON
 """
@@ -42,16 +43,16 @@ def remove_spaces_and_sigils(label):
   sigils = '@%*'
   for sigil in sigils:
     label = label.replace(sigil, '')
-  return label.lower().replace(' ', '_')
+  return label.replace(' ', '_')
 
 def get_attribute(line):
   try: 
     attribute, content = line.split(':', 1)
-    return remove_spaces_and_sigils(attribute).strip(), content.strip()
+    attribute = remove_spaces_and_sigils(attribute).strip()
+    content = content.strip()
+    return attribute, content
   except ValueError:
     print 'ERROR Unable to parse attribute line: ', 
-    print line
-    exit()
 
 def parse_participants(participant_line):
   """
@@ -95,56 +96,98 @@ def squish_continuation_lines(content):
       fixed.append(line.strip())
   return '\n'.join(fixed)
 
-def chunk_list(sequence, criterion):
-  """
-  Subdivide a sequence into subsequences based on a criterion
-  """
-  a = 0
-  chunk = []
-
-  result = []
-
-  for element in sequence:
-    if criterion(element):
-      a = a + 1
-    if a == 1:
-      chunk.append(element)
-    else:
-      result.append(chunk)
-      chunk = []
-      chunk.append(element)
-      a = 1
-  result.append(chunk)
-  return result
 
 def starts_with_star(line):
   return line.startswith('*') 
  
-def parse_transcript(content):
+def parse_analysis(gra, mor, sentence):
+  """
+  stitch together %gra, %mor, and sentence  
+  """
+  #print gra, '\n', mor, '\n', sentence
+  gra = gra.strip().split(' ')
+  mor = mor.strip().split(' ')
+  words = sentence.strip().split()
+  return zip(mor, gra, words) 
+
+
+def parse_turn(lines):
+  """
+  convert before into turn.
+  before = [
+    "*CLN:\twatch it spin .", 
+    "%mor:\tn|watch pro|it v|spin .", 
+    "%gra:\t1|3|VOC 2|3|SUBJ 3|0|ROOT 4|3|PUNCT", 
+    "%spa:\t$DJF:RP"
+  ] 
+
+  turn = {
+    'speaker' : 'CLN',
+    'phrase' : {
+      'sentence': 'watch it spin .',
+      'mor': 'n|watch pro|it v|spin .',
+      'gra' : '1|3|VOC 2|3|SUBJ 3|0|ROOT 4|3|PUNCT', 
+      'spa' : '$DJF:RP'
+    },
+    'gloss' : dict(zip('sentence'.split(), 'gra'.split()) )
+
+  }
+  """
+  print lines 
+  turn = {} 
+
+  for line in lines: 
+    if line.startswith('*'): 
+      turn['speaker'] = remove_spaces_and_sigils(line.split(':')[0]) 
+      sentence = line.split('\t')[1].strip()
+      turn['sentence'] = sentence
+    elif line.startswith('%'): 
+      label, content = line.split('\t')
+      kind = label[1:4]
+      #print kind, label; exit()
+      turn[kind] = content
+
+  #print json.dumps(turn['phrase'], indent=2)
+  if 'gra' in turn and 'mor' in turn and 'sentence' in turn: 
+    turn['analysis'] = parse_analysis( turn['gra'], turn['mor'], turn['sentence'] )
+
+  return turn
+
+
+def parse_transcript(cha):
   """
   parse the content of the chat content into a JSON structure
   """
   transcript = {}
   transcript['turns']  = []
   transcript['lines']  = []
+  transcript['metadata']  = {}
+  transcript['metadata']['filename'] = cha
 
+  content = open(cha,'U').read().decode('utf-8')
   content = squish_continuation_lines(content)
 
   for line in content.splitlines():
     if line.startswith('@') and ':' in line:
       attribute, value = get_attribute(line)
-      transcript[attribute] = value
+      transcript['metadata'][attribute] = value
+    elif line.startswith('@'):
+      continue
     else:
       transcript['lines'].append(line)
 
   transcript['turns'] = chunk_list(transcript['lines'], starts_with_star)
+  transcript['turns']  = [parse_turn(turn) for turn in transcript['turns']]
+
   ignore = transcript.pop('lines') 
 
   return transcript
 
 if __name__ == "__main__":
   import sys
-  filename = sys.argv[1]
-  content = open(filename, 'U').read().decode('utf-8')
-  print json.dumps(parse_transcript(content), indent=2)
+  from glob import glob
+  from random import choice
+  filename = '/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/19a1.cha'
+  filename = choice(glob('/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/*.cha'))
+  print json.dumps(parse_transcript(filename), indent=2)
 
