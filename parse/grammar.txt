@@ -1,0 +1,3 @@
+Kind = 
+MetadataLine Literal('@') + Kind + Literal(':')
+chat_file = OneOrMore(MetadataLine) + OneOrMore(ContentLine)  
