@@ -123,6 +123,8 @@ def parse_turn(lines):
 
   turn = {
     'speaker' : 'CLN',
+    'start' : 1368280,
+    'stop'  : 1368698,
     'phrase' : {
       'sentence': 'watch it spin .',
       'mor': 'n|watch pro|it v|spin .',
@@ -133,18 +135,17 @@ def parse_turn(lines):
 
   }
   """
-  print lines 
+
   turn = {} 
 
   for line in lines: 
     if line.startswith('*'): 
       turn['speaker'] = remove_spaces_and_sigils(line.split(':')[0]) 
-      sentence = line.split('\t')[1].strip()
-      turn['sentence'] = sentence
+      sentence, start, stop = process_sentence(line) 
+      turn.update({'sentence': sentence, 'start':start, 'stop':stop}) 
     elif line.startswith('%'): 
       label, content = line.split('\t')
       kind = label[1:4]
-      #print kind, label; exit()
       turn[kind] = content
 
   #print json.dumps(turn['phrase'], indent=2)
@@ -153,10 +154,29 @@ def parse_turn(lines):
 
   return turn
 
+def extract_timestamps(line):
+    return line.strip().split()[-1].split('_')
+
+def process_sentence(line):
+  #if '\t'  in line: 
+  #  print line.replace('\t', '*****')
+
+  line = line.replace(u'\u0015', '') # not sure what these are?
+
+  line = line.split('\t')[1].strip()
+
+  if re.search('(\d+)_(\d+)', line):
+    start, stop = extract_timestamps(line)
+    sentence = ' '.join(line.split(' ')[:-1])
+    #print start, stop, '\n', sentence; exit()
+  else: 
+    sentence = ' '.join(line.split(' ')[:-1])
+    start, stop = '0 0'.split() # may as well treat them as strings
+  return sentence, start, stop
 
 def parse_transcript(cha):
   """
-  parse the content of the chat content into a JSON structure
+  parse the contents of a chat file into a JSON structure
   """
   transcript = {}
   transcript['turns']  = []
@@ -183,11 +203,11 @@ def parse_transcript(cha):
 
   return transcript
 
-if __name__ == "__main__":
-  import sys
-  from glob import glob
-  from random import choice
-  filename = '/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/19a1.cha'
-  filename = choice(glob('/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/*.cha'))
-  print json.dumps(parse_transcript(filename), indent=2)
 
+if __name__ == "__main__":
+  from search import * 
+  from random import * 
+  content = parse_transcript( choice(glob('/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/*.cha')) )
+  print '-------'
+  print json.dumps(content, indent=2)
+  
