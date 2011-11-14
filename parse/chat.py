@@ -108,7 +108,11 @@ def parse_analysis(gra, mor, sentence):
   gra = gra.strip().split(' ')
   mor = mor.strip().split(' ')
   words = sentence.strip().split()
-  return zip(mor, gra, words) 
+  words = zip(mor, gra, words)
+  return [label_analysis(word) for word in words]
+
+def label_analysis(word):
+  return {'mor': word[0], 'gra': word[1], 'word': word[2]}
 
 
 def parse_turn(lines):
@@ -205,8 +209,9 @@ def parse_transcript(cha):
 
 
 if __name__ == "__main__":
-  from search import * 
+  #from search import * 
   from random import * 
+  from glob import glob
   content = parse_transcript( choice(glob('/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/*.cha')) )
   print '-------'
   print json.dumps(content, indent=2)
