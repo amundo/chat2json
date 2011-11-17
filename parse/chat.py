@@ -207,9 +207,7 @@ def parse_transcript(cha):
 
   return transcript
 
-
 if __name__ == "__main__":
-  #from search import * 
   from random import * 
   from glob import glob
   content = parse_transcript( choice(glob('/Users/pat/Sites/ucsb/courses/2011/lgacq/childes/Eng-USA/MacWhinney/*.cha')) )
