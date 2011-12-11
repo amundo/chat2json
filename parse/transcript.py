@@ -34,8 +34,7 @@ class Transcript:
     return dmap 
 
   def dispersion(self, word):
-    if word in self.dispersion_map: 
-      return self.dispersion_map[word] 
+    return self.dispersion_map[word] 
 
   def _collect_speakers(self):
     return sorted(set([turn['speaker'] for turn in self.turns]))
@@ -76,14 +75,13 @@ if __name__ == "__main__":
   archive = Archive(sys.argv[1:])
   #print archive.transcripts
   #transcript = random.choice(archive.transcripts)
-  print archive.transcripts
 
   words = 'bird mommy naima the'.split()
 
   query = defaultdict()
 
   for transcript in archive.transcripts:
-    query[transcript.filename] = {}
+    query[transcript.filename] = defaultdict()
     for word in words: 
       query[transcript.filename][word] = len(transcript.dispersion(word))
 
